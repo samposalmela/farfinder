@@ -39,7 +39,7 @@ def load_ship_inventory():
         with open(SHIP_INVENTORY_FILE, 'r') as f:
             return json.load(f)
     except FileNotFoundError:
-        return {'rations': 50, 'waterskins': 50, 'material': 50}  # Default values
+        return {'rations': 50, 'material': 50}  # Default values
 
 # Save the ship's inventory to the file
 def save_ship_inventory(ship_inventory):
@@ -63,7 +63,7 @@ async def register_character(ctx, character_name, character_class, species, back
         "level": 1,
         "status": "Idle",
         "description": description,
-        "inventory": {'rations': 0, 'waterskins': 0, 'material': 0}  # Initialize character's inventory
+        "inventory": {'rations': 0, 'material': 0}  # Initialize character's inventory
     }
 
     save_data(user_id, data)
@@ -155,138 +155,166 @@ async def set(ctx, attribute: str, *, value: str):
 
     await ctx.send(f"Updated {attribute} for {active_character} to: {value}.")
 
-# Command for setting the character's status to 'Exploring'
+# Command for players to set their status to "Idle"
 @bot.command()
-async def explore(ctx):
+async def idle(ctx):
     user_id = str(ctx.author.id)
     data = load_data(user_id)
 
     active_character = data.get("active_character")
-    if not active_character:
+    if active_character:
+        # Set the status to Idle
+        data["characters"][active_character]["status"] = "Idle"
+        save_data(user_id, data)
+
+        # Assign the Idle role
+        member = ctx.author
+        role = discord.utils.get(ctx.guild.roles, name="Idle")
+        if role:
+            # Remove other status roles if present
+            for status in ["Exploring", "Resting"]:
+                status_role = discord.utils.get(ctx.guild.roles, name=status)
+                if status_role in member.roles:
+                    await member.remove_roles(status_role)
+            await member.add_roles(role)
+            await ctx.send(f"{active_character} is now idle, and the role has been applied.")
+        else:
+            await ctx.send("Role 'Idle' not found. Please create it.")
+    else:
         await ctx.send("You don't have an active character. Please switch to one first.")
-        return
 
-    # Set the character's status to 'Exploring'
-    data["characters"][active_character]["status"] = "Exploring"
-    save_data(user_id, data)
-
-    await ctx.send(f"{active_character} is now Exploring.")
-
-# Command for setting the character's status to 'Resting' and deducting resources
+# Command for players to set their status to "Resting"
 @bot.command()
 async def rest(ctx):
     user_id = str(ctx.author.id)
     data = load_data(user_id)
 
     active_character = data.get("active_character")
-    if not active_character:
+    if active_character:
+        # Get the character's current inventory
+        character_inventory = data["characters"][active_character].get("inventory", {})
+        
+        # Check if the character has enough rations
+        rations = character_inventory.get("rations", 0)
+
+        member = ctx.author
+        if rations >= 1:
+            # Deduct resources
+            character_inventory["rations"] -= 1
+            save_data(user_id, data)
+
+            # Set the status to Resting
+            data["characters"][active_character]["status"] = "Resting"
+            save_data(user_id, data)
+
+            # Assign the Resting role and remove others
+            role = discord.utils.get(ctx.guild.roles, name="Resting")
+            if role:
+                # Remove other status roles if present
+                for status in ["Exploring", "Idle"]:
+                    status_role = discord.utils.get(ctx.guild.roles, name=status)
+                    if status_role in member.roles:
+                        await member.remove_roles(status_role)
+                await member.add_roles(role)
+                await ctx.send(f"{active_character} is now resting. Ration consumed.")
+            else:
+                await ctx.send("Role 'Resting' not found. Please create it.")
+        else:
+            # Even if resources are insufficient, still set the status to Resting
+            data["characters"][active_character]["status"] = "Resting"
+            save_data(user_id, data)
+
+            # Assign the Resting role and remove others
+            role = discord.utils.get(ctx.guild.roles, name="Resting")
+            if role:
+                # Remove other status roles if present
+                for status in ["Exploring", "Idle"]:
+                    status_role = discord.utils.get(ctx.guild.roles, name=status)
+                    if status_role in member.roles:
+                        await member.remove_roles(status_role)
+                await member.add_roles(role)
+                await ctx.send(f"{active_character} is now resting, but doesn't have enough resources. Add a level of exhaustion. No rations consumed.")
+            else:
+                await ctx.send("Role 'Resting' not found. Please create it.")
+    else:
         await ctx.send("You don't have an active character. Please switch to one first.")
-        return
 
-    # Check if the character has enough resources (1 ration, 2 waterskins)
-    character_inventory = data["characters"][active_character]["inventory"]
-    if character_inventory["rations"] < 1 or character_inventory["waterskins"] < 2:
-        await ctx.send("Not enough resources to rest! Add rations or waterskins, or gain a level of exhaustion.")
-        return
-
-    # Deduct resources for resting
-    character_inventory["rations"] -= 1
-    character_inventory["waterskins"] -= 2
-
-    # Update the character's status to 'Resting'
-    data["characters"][active_character]["status"] = "Resting"
-    save_data(user_id, data)
-
-    await ctx.send(f"{active_character} is now Resting. 1 ration and 2 waterskins were used.")
-
-# Command to check the current status of the character
+# Command for players to set their status to "Exploring"
 @bot.command()
-async def status(ctx):
+async def explore(ctx):
     user_id = str(ctx.author.id)
     data = load_data(user_id)
 
     active_character = data.get("active_character")
-    if not active_character:
+    if active_character:
+        # Set the status to Exploring
+        data["characters"][active_character]["status"] = "Exploring"
+        save_data(user_id, data)
+
+        # Assign the Exploring role
+        member = ctx.author
+        role = discord.utils.get(ctx.guild.roles, name="Exploring")
+        if role:
+            # Remove other status roles if present
+            for status in ["Resting", "Idle"]:
+                status_role = discord.utils.get(ctx.guild.roles, name=status)
+                if status_role in member.roles:
+                    await member.remove_roles(status_role)
+            await member.add_roles(role)
+            await ctx.send(f"{active_character} is now exploring.")
+        else:
+            await ctx.send("Role 'Exploring' not found. Please create it.")
+    else:
         await ctx.send("You don't have an active character. Please switch to one first.")
-        return
 
-    # Get the current status of the character
-    current_status = data["characters"][active_character].get("status", "Idle")
-    await ctx.send(f"Current status of {active_character}: {current_status}")
-
-# Command for players to take materials from the ship (Rations, Waterskins, or Material)
+# Command to give resources to the ship's inventory (rations/material)
 @bot.command()
-async def take(ctx, material: str, amount: int):
-    user_id = str(ctx.author.id)
-    data = load_data(user_id)
-
-    if material not in ['rations', 'waterskins', 'material']:
-        await ctx.send(f"Invalid material! Available materials: rations, waterskins, material.")
-        return
-
-    if amount <= 0:
-        await ctx.send("Amount must be a positive number.")
-        return
-
-    # Load the ship inventory from the file
-    ship_inventory = load_ship_inventory()
-    
-    if ship_inventory[material] < amount:
-        await ctx.send(f"Not enough {material} on the ship!")
-        return
-
-    # Load or create character's inventory
-    active_character = data.get("active_character")
-    character_inventory = data["characters"].get(active_character, {}).get("inventory", {})
-
-    # Add materials to character's inventory
-    character_inventory[material] = character_inventory.get(material, 0) + amount
-    ship_inventory[material] -= amount
-
-    # Save the updated data
-    save_data(user_id, data)
-    save_ship_inventory(ship_inventory)
-
-    await ctx.send(f"{active_character} took {amount} {material}(s)!")
-    await ctx.send(f"Ship's {material} left: {ship_inventory[material]}")
-    await ctx.send(f"{active_character}'s {material}: {character_inventory[material]}")
-
-# Command for players to deposit materials into the ship
-@bot.command()
-async def deposit(ctx, material: str, amount: int):
-    user_id = str(ctx.author.id)
-    data = load_data(user_id)
-
-    if material not in ['rations', 'waterskins', 'material']:
-        await ctx.send(f"Invalid material! Available materials: rations, waterskins, material.")
-        return
-
-    if amount <= 0:
-        await ctx.send("Amount must be a positive number.")
-        return
-
-    # Load the ship inventory from the file
+async def deposit(ctx, material, amount: int):
+    # Load ship inventory
     ship_inventory = load_ship_inventory()
 
-    # Load or create character's inventory
-    active_character = data.get("active_character")
-    character_inventory = data["characters"].get(active_character, {}).get("inventory", {})
-
-    if character_inventory.get(material, 0) < amount:
-        await ctx.send(f"You don't have enough {material} to deposit.")
+    # Validate material
+    if material not in ship_inventory:
+        await ctx.send("Invalid material! You can deposit either 'rations' or 'material'.")
         return
 
-    # Update inventories
-    character_inventory[material] -= amount
+    # Deposit the material
     ship_inventory[material] += amount
-
-    save_data(user_id, data)
     save_ship_inventory(ship_inventory)
-    await ctx.send(f"{active_character} deposited {amount} {material}(s) into the ship!")
 
-# Command to adjust the active character's inventory
+    await ctx.send(f"Deposited {amount} {material} to the ship's inventory.")
+
+# Command to take resources from the ship's inventory (rations/material)
 @bot.command()
-async def adjust(ctx, material: str, amount: int):
+async def take(ctx, material, amount: int):
+    # Load ship inventory
+    ship_inventory = load_ship_inventory()
+
+    # Validate material
+    if material not in ship_inventory:
+        await ctx.send("Invalid material! You can take either 'rations' or 'material'.")
+        return
+
+    # Check if there are enough resources
+    if ship_inventory[material] >= amount:
+        ship_inventory[material] -= amount
+        # Update the user's character's inventory
+        user_id = str(ctx.author.id)
+        data = load_data(user_id)
+        active_character = data.get("active_character")
+        if active_character:
+            character_inventory = data["characters"][active_character].get("inventory", {})
+            character_inventory[material] += amount
+            save_data(user_id, data)
+        save_ship_inventory(ship_inventory)
+
+        await ctx.send(f"Took {amount} {material} from the ship's inventory.")
+    else:
+        await ctx.send("Not enough material in the ship's inventory.")
+
+# Command to adjust a character's inventory
+@bot.command()
+async def adjust(ctx, action, material, amount: int):
     user_id = str(ctx.author.id)
     data = load_data(user_id)
 
@@ -295,32 +323,32 @@ async def adjust(ctx, material: str, amount: int):
         await ctx.send("You don't have an active character. Please switch to one first.")
         return
 
-    if material not in ['rations', 'waterskins', 'material']:
-        await ctx.send(f"Invalid material! Available materials: rations, waterskins, material.")
+    # Validate material type
+    if material not in ['rations', 'material']:
+        await ctx.send("Invalid material! You can adjust 'rations' or 'material'.")
         return
 
-    # Get the active character's inventory
+    # Check the action (add or remove)
+    if action not in ['add', 'remove']:
+        await ctx.send("Invalid action! You can either 'add' or 'remove' materials.")
+        return
+
+    # Adjust the inventory
     character_inventory = data["characters"][active_character].get("inventory", {})
-    character_inventory[material] = character_inventory.get(material, 0) + amount
 
-    # Prevent negative inventory
-    if character_inventory[material] < 0:
-        character_inventory[material] = 0
-
-    # Save the updated character inventory
-    data["characters"][active_character]["inventory"] = character_inventory
+    if action == 'add':
+        character_inventory[material] += amount
+        await ctx.send(f"Added {amount} {material} to your character's inventory.")
+    elif action == 'remove':
+        if character_inventory[material] >= amount:
+            character_inventory[material] -= amount
+            await ctx.send(f"Removed {amount} {material} from your character's inventory.")
+        else:
+            await ctx.send(f"Not enough {material} in your inventory to remove.")
+    
     save_data(user_id, data)
 
-    await ctx.send(f"Adjusted {material} for {active_character} by {amount}. New total: {character_inventory[material]}")
-
-# Command to see the ship's inventory (admins or authorized users only)
-@bot.command()
-async def shipinventory(ctx):
-    # Load the ship's inventory
-    ship_inventory = load_ship_inventory()
-    
-    await ctx.send(f"Ship's Inventory:\nRations: {ship_inventory['rations']}\nWaterskins: {ship_inventory['waterskins']}\nMaterial: {ship_inventory['material']}")
-
+# Command to view the active character's inventory
 @bot.command()
 async def inventory(ctx):
     user_id = str(ctx.author.id)
@@ -330,14 +358,27 @@ async def inventory(ctx):
     if active_character:
         character_inventory = data["characters"][active_character].get("inventory", {})
         inventory_str = (
-            f"Inventory for {active_character}:\n"
+            f"Inventory of {active_character}:\n"
             f"Rations: {character_inventory.get('rations', 0)}\n"
-            f"Waterskins: {character_inventory.get('waterskins', 0)}\n"
             f"Material: {character_inventory.get('material', 0)}"
         )
         await ctx.send(inventory_str)
     else:
         await ctx.send("You don't have an active character. Please switch to one first.")
+
+# Command to view the ship's inventory
+@bot.command()
+async def ship_inventory(ctx):
+    # Load ship inventory
+    ship_inventory = load_ship_inventory()
+
+    inventory_str = (
+        f"Ship Inventory:\n"
+        f"Rations: {ship_inventory.get('rations', 0)}\n"
+        f"Material: {ship_inventory.get('material', 0)}"
+    )
+    await ctx.send(inventory_str)
+
 
 # Run the bot
 bot.run(TOKEN)
