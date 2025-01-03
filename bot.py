@@ -61,6 +61,7 @@ async def register_character(ctx, character_name, character_class, species, back
         "species": species,
         "background": background,
         "level": 1,
+        "status": "Idle",
         "description": description,
         "inventory": {'rations': 0, 'waterskins': 0, 'material': 0}  # Initialize character's inventory
     }
@@ -104,6 +105,7 @@ async def profile(ctx):
             f"Species: {character_info['species']}\n"
             f"Background: {character_info['background']}\n"
             f"Level: {character_info['level']}\n"
+            f"Status: {character_info['status']}\n"
             f"Description: {character_info['description'] if character_info['description'] else 'No description set.'}"
         )
         await ctx.send(profile_str)
@@ -152,6 +154,65 @@ async def set(ctx, attribute: str, *, value: str):
     save_data(user_id, data)
 
     await ctx.send(f"Updated {attribute} for {active_character} to: {value}.")
+
+# Command for setting the character's status to 'Exploring'
+@bot.command()
+async def explore(ctx):
+    user_id = str(ctx.author.id)
+    data = load_data(user_id)
+
+    active_character = data.get("active_character")
+    if not active_character:
+        await ctx.send("You don't have an active character. Please switch to one first.")
+        return
+
+    # Set the character's status to 'Exploring'
+    data["characters"][active_character]["status"] = "Exploring"
+    save_data(user_id, data)
+
+    await ctx.send(f"{active_character} is now Exploring.")
+
+# Command for setting the character's status to 'Resting' and deducting resources
+@bot.command()
+async def rest(ctx):
+    user_id = str(ctx.author.id)
+    data = load_data(user_id)
+
+    active_character = data.get("active_character")
+    if not active_character:
+        await ctx.send("You don't have an active character. Please switch to one first.")
+        return
+
+    # Check if the character has enough resources (1 ration, 2 waterskins)
+    character_inventory = data["characters"][active_character]["inventory"]
+    if character_inventory["rations"] < 1 or character_inventory["waterskins"] < 2:
+        await ctx.send("Not enough resources to rest! Add rations or waterskins, or gain a level of exhaustion.")
+        return
+
+    # Deduct resources for resting
+    character_inventory["rations"] -= 1
+    character_inventory["waterskins"] -= 2
+
+    # Update the character's status to 'Resting'
+    data["characters"][active_character]["status"] = "Resting"
+    save_data(user_id, data)
+
+    await ctx.send(f"{active_character} is now Resting. 1 ration and 2 waterskins were used.")
+
+# Command to check the current status of the character
+@bot.command()
+async def status(ctx):
+    user_id = str(ctx.author.id)
+    data = load_data(user_id)
+
+    active_character = data.get("active_character")
+    if not active_character:
+        await ctx.send("You don't have an active character. Please switch to one first.")
+        return
+
+    # Get the current status of the character
+    current_status = data["characters"][active_character].get("status", "Idle")
+    await ctx.send(f"Current status of {active_character}: {current_status}")
 
 # Command for players to take materials from the ship (Rations, Waterskins, or Material)
 @bot.command()
