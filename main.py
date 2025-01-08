@@ -17,9 +17,7 @@ bot = commands.Bot(command_prefix="!", intents=intents, websocket_timeout=60)
 async def load_extensions():
     try:
         await bot.load_extension("commands.character")
-        await bot.load_extension("commands.inventory")
-        await bot.load_extension("commands.status")
-        await bot.load_extension("commands.ship")
+        await bot.load_extension("commands.farfinder")
     except Exception as e:
         print(f"Error loading extensions: {e}")
 
