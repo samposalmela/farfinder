@@ -1,0 +1,17 @@
+[
+    {
+        "name": "+1 wand of the war mage",
+        "price_in_tokens": 30,
+        "quantity": 2
+    },
+    {
+        "name": "boots of elvenkind",
+        "price_in_tokens": 25,
+        "quantity": 1
+    },
+    {
+        "name": "potion of healing",
+        "price_in_tokens": 1,
+        "quantity": 10
+    }
+]
