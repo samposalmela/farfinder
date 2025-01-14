@@ -34,7 +34,7 @@ class CharacterCommands(commands.Cog):
             "level": 1,
             "status": "Idle",
             "description": description,
-            "inventory": {'rations': 0, 'material': 0}
+            "inventory": {'rations': 0, 'material': 0, 'tokens': 0}  # Include tokens
         }
         save_data(user_id, data)
         await ctx.send(f"Character {character_name} registered successfully!")
@@ -143,8 +143,8 @@ class CharacterCommands(commands.Cog):
             await ctx.send("You don't have an active character. Please switch to one first.")
             return
 
-        if material not in ['rations', 'material']:
-            await ctx.send("Invalid material! You can adjust 'rations' or 'material'.")
+        if material not in ['rations', 'material', 'tokens']:
+            await ctx.send("Invalid material! You can adjust 'rations', 'material', or 'tokens'.")
             return
 
         character_inventory = data["characters"][active_character].get("inventory", {})
@@ -201,6 +201,37 @@ class CharacterCommands(commands.Cog):
         characters = data["characters"]
         character_list = [name for name in characters]
         await ctx.send(f"Your characters: {', '.join(character_list) if character_list else 'None'}")
+
+    @character.command()
+    async def edit(self, ctx, character_name, field, *, value):
+        """
+        Edits a character's details (class, species, background, level, description).
+        """
+        user_id = str(ctx.author.id)
+        data = load_data(user_id)
+
+        if character_name not in data["characters"]:
+            await ctx.send(f"Character {character_name} not found.")
+            return
+
+        valid_fields = ["class", "species", "background", "level", "description"]
+        if field not in valid_fields:
+            await ctx.send(f"Invalid field! Choose from: {', '.join(valid_fields)}.")
+            return
+
+        if field == "level":
+            try:
+                value = int(value)
+                if value < 1:
+                    await ctx.send("Level must be 1 or higher.")
+                    return
+            except ValueError:
+                await ctx.send("Level must be a number.")
+                return
+
+        data["characters"][character_name][field] = value
+        save_data(user_id, data)
+        await ctx.send(f"Updated {character_name}'s {field} to {value}.")
 
 async def setup(bot):
     await bot.add_cog(CharacterCommands(bot))
