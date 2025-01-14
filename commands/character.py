@@ -8,14 +8,14 @@ class CharacterCommands(commands.Cog):
         self.bot = bot
 
     @commands.group()
-    async def character(self, ctx):
+    async def char(self, ctx):
         """
         Main command group for character-related operations.
         """
         if ctx.invoked_subcommand is None:
             await ctx.send("Invalid character command! Use `register`, `switch`, `profile`, or `inventory`.")
 
-    @character.command()
+    @char.command()
     async def register(self, ctx, character_name, character_class, species, background, description=""):
         """
         Registers a new character.
@@ -39,7 +39,7 @@ class CharacterCommands(commands.Cog):
         save_data(user_id, data)
         await ctx.send(f"Character {character_name} registered successfully!")
 
-    @character.command()
+    @char.command()
     async def switch(self, ctx, character_name):
         """
         Switches to the specified character and updates the user's nickname in the server.
@@ -73,7 +73,7 @@ class CharacterCommands(commands.Cog):
         else:
             await ctx.send("Character not found. Please register the character first.")
 
-    @character.command()
+    @char.command()
     async def profile(self, ctx, character_name=None):
         """
         Views the profile of the active character or any character by name.
@@ -102,7 +102,7 @@ class CharacterCommands(commands.Cog):
         else:
             await ctx.send("You don't have an active character. Please switch to one first.")
 
-    @character.group()
+    @char.group()
     async def inventory(self, ctx):
         """
         Subcommand group for inventory-related operations.
@@ -160,7 +160,7 @@ class CharacterCommands(commands.Cog):
         action = "Added" if amount > 0 else "Removed"
         await ctx.send(f"{action} {abs(amount)} {material} to your inventory.")
 
-    @character.command()
+    @char.command()
     async def status(self, ctx, new_status):
         """
         Updates the active character's status.
@@ -190,7 +190,7 @@ class CharacterCommands(commands.Cog):
         await manage_status_roles(ctx, new_status)
         await ctx.send(f"{active_character} is now {new_status.lower()}.")
 
-    @character.command()
+    @char.command()
     async def list(self, ctx):
         """
         Lists all registered characters.
@@ -202,7 +202,7 @@ class CharacterCommands(commands.Cog):
         character_list = [name for name in characters]
         await ctx.send(f"Your characters: {', '.join(character_list) if character_list else 'None'}")
 
-    @character.command()
+    @char.command()
     async def edit(self, ctx, character_name, field, *, value):
         """
         Edits a character's details (class, species, background, level, description).
